@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stick Hero</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100dvh;
+    overflow: hidden;
+    font-family: 'Segoe UI', sans-serif;
+    touch-action: none;
+    user-select: none;
+  }
+  #gameCanvas {
+    display: block;
+    touch-action: none;
+  }
+  /* Character Select Screen */
+  #selectScreen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(160deg, #0f0c29, #302b63, #24243e);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  #selectScreen h1 {
+    color: #fff;
+    font-size: clamp(22px, 6vw, 36px);
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 20px rgba(255,200,50,0.5);
+  }
+  #selectScreen p {
+    color: #aaa;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    max-width: 360px;
+    width: 100%;
+  }
+  .hero-card {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 14px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-card:active {
+    transform: scale(0.93);
+  }
+  .hero-card.selected {
+    border-color: #ffd700;
+    background: rgba(255,215,0,0.15);
+    box-shadow: 0 0 20px rgba(255,215,0,0.3);
+  }
+  .hero-card img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #333;
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .hero-card span {
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 8px;
+    text-align: center;
+  }
+  .hero-emoji {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  #startBtn {
+    margin-top: 24px;
+    padding: 14px 48px;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #1a1a2e;
+    font-size: 16px;
+    font-weight: 800;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 20px rgba(255,140,0,0.4);
+    transition: transform 0.15s;
+  }
+  #startBtn:active { transform: scale(0.95); }
+  #startBtn:disabled { opacity: 0.4; cursor: default; }
+
+  /* HUD */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 14px 18px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .hud-box {
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    padding: 8px 14px;
+    color: #fff;
+    font-size: 13px;
+    pointer-events: all;
+  }
+  .hud-box span { display: block; font-size: 20px; font-weight: 800; }
+  #restartBtn {
+    background: rgba(255,100,100,0.8);
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    pointer-events: all;
+    backdrop-filter: blur(8px);
+  }
+  #restartBtn:active { transform: scale(0.95); }
+
+  /* Hint */
+  #hint {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+    text-align: center;
+    pointer-events: none;
+    transition: opacity 0.5s;
+    z-index: 10;
+  }
+
+  /* Game Over overlay */
+  #gameOverScreen {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    backdrop-filter: blur(4px);
+  }
+  #gameOverScreen h2 {
+    color: #ff4444;
+    font-size: 42px;
+    font-weight: 900;
+    text-shadow: 0 0 30px rgba(255,68,68,0.6);
+    margin-bottom: 10px;
+  }
+  #gameOverScreen .score-display {
+    color: #fff;
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+  #gameOverScreen .best-display {
+    color: #ffd700;
+    font-size: 16px;
+    margin-bottom: 30px;
+  }
+  #gameOverScreen button {
+    padding: 14px 44px;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #1a1a2e;
+    font-size: 16px;
+    font-weight: 800;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(255,140,0,0.4);
+  }
+  #gameOverScreen button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+
+<div id="selectScreen">
+  <h1>⚔️ STICK HERO</h1>
+  <p>Обери свого героя</p>
+  <div class="hero-grid" id="heroGrid"></div>
+  <button id="startBtn" disabled>ПОЧАТИ ГРУ</button>
+</div>
+
+<div id="hud" style="display:none">
+  <div class="hud-box">Очки<span id="scoreDisplay">0</span></div>
+  <button id="restartBtn">↺ Рестарт</button>
+  <div class="hud-box">Рекорд<span id="bestDisplay">0</span></div>
+</div>
+
+<div id="hint">Утримуй екран → росте палка</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="gameOverScreen">
+  <h2>💀 УПАВ!</h2>
+  <div class="score-display" id="goScore"></div>
+  <div class="best-display" id="goBest"></div>
+  <button id="goRestartBtn">ГРАТИ ЗНОВУ</button>
+</div>
+
+<script>
+// ===== HEROES =====
+const HEROES = [
+  { name: 'Tito',    file: 'Tito.png',    emoji: '🦸' },
+  { name: 'Smartik', file: 'Smartik.png', emoji: '🤓' },
+  { name: 'Junior',  file: 'Junior.png',  emoji: '👦' },
+  { name: 'Fil',     file: 'Fil.png',     emoji: '🐘' },
+  { name: 'Milka',   file: 'Milka.png',   emoji: '🐄' },
+  { name: 'Bark',    file: 'Bark.png',    emoji: '🐶' },
+];
+
+let selectedHero = null;
+let heroImg = null;
+
+// Build hero select grid
+const grid = document.getElementById('heroGrid');
+HEROES.forEach((h, i) => {
+  const card = document.createElement('div');
+  card.className = 'hero-card';
+  const img = new Image();
+  img.src = h.file;
+  img.style.cssText = 'width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.2)';
+  img.onerror = () => {
+    const em = document.createElement('div');
+    em.className = 'hero-emoji';
+    em.textContent = h.emoji;
+    img.replaceWith(em);
+  };
+  const label = document.createElement('span');
+  label.textContent = h.name;
+  card.appendChild(img);
+  card.appendChild(label);
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.hero-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedHero = h;
+    document.getElementById('startBtn').disabled = false;
+  });
+  grid.appendChild(card);
+});
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  if (!selectedHero) return;
+  heroImg = new Image();
+  heroImg.src = selectedHero.file;
+  heroImg.onerror = () => { heroImg = null; };
+  document.getElementById('selectScreen').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+  initGame();
+});
+
+// ===== CANVAS SETUP =====
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); if (game) game.handleResize(); });
+
+// ===== COLORS =====
+const COLORS = {
+  sky1: '#0f0c29',
+  sky2: '#302b63',
+  platform: '#e8e8e8',
+  platformShadow: '#999',
+  stick: '#222',
+  hero: '#ffd700',
+  danger: '#ff4444',
+  accent: '#ffd700',
+  stars: 'rgba(255,255,255,0.6)',
+};
+
+// ===== GAME STATE =====
+let game = null;
+let score = 0;
+let best = 0;
+
+function initGame() {
+  score = 0;
+  document.getElementById('scoreDisplay').textContent = '0';
+  document.getElementById('hint').style.opacity = '1';
+  document.getElementById('gameOverScreen').style.display = 'none';
+  game = new Game();
+  game.start();
+}
+
+// ===== STAR BACKGROUND =====
+const stars = [];
+for (let i = 0; i < 80; i++) {
+  stars.push({
+    x: Math.random(),
+    y: Math.random() * 0.7,
+    r: Math.random() * 1.5 + 0.3,
+    a: Math.random(),
+  });
+}
+
+function drawBackground() {
+  const W = canvas.width, H = canvas.height;
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0f0c29');
+  grad.addColorStop(0.6, '#302b63');
+  grad.addColorStop(1, '#1a1a3e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  stars.forEach(s => {
+    ctx.globalAlpha = s.a;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ===== GAME CLASS =====
+class Game {
+  constructor() {
+    this.W = canvas.width;
+    this.H = canvas.height;
+    this.groundY = this.H * 0.72;
+    this.platformH = 20;
+    this.heroSize = Math.min(this.W, this.H) * 0.1;
+
+    this.platforms = [];
+    // ПРАВКА 1: Додано startX
+    this.stick = { startX: 0, length: 0, angle: -Math.PI / 2, growing: false, fallen: false };
+    this.heroX = 0;
+    this.heroY = 0;
+    this.phase = 'idle';
+    this.cameraX = 0;
+    this.targetCameraX = 0;
+    this.fallY = 0;
+    this.raf = null;
+    this.lastTime = 0;
+    this.hintHidden = false;
+    this.deathParticles = [];
+    this.walkProgress = 0;
+    this.walkOffset = 0;
+    this.stickFallAngle = -Math.PI / 2;
+
+    this.initPlatforms();
+    this.bindInput();
+  }
+
+  handleResize() {
+    this.W = canvas.width;
+    this.H = canvas.height;
+    this.groundY = this.H * 0.72;
+    this.heroSize = Math.min(this.W, this.H) * 0.1;
+  }
+
+  initPlatforms() {
+    const W = this.W;
+    const p0w = W * 0.22;
+    const p0x = W * 0.06;
+    this.platforms.push({ x: p0x, w: p0w });
+
+    this.heroX = p0x + p0w;
+    this.heroY = this.groundY - this.platformH;
+
+    this.generateNextPlatform();
+    this.generateNextPlatform();
+  }
+
+  generateNextPlatform() {
+    const W = this.W;
+    const last = this.platforms[this.platforms.length - 1];
+    const minGap = W * 0.12;
+    const maxGap = W * 0.42;
+    const gap = minGap + Math.random() * (maxGap - minGap);
+    const minW = W * 0.08;
+    const maxW = W * 0.22;
+    const w = minW + Math.random() * (maxW - minW);
+    const x = last.x + last.w + gap;
+    this.platforms.push({ x, w });
+  }
+
+  bindInput() {
+    const onDown = (e) => {
+      e.preventDefault();
+      if (this.phase === 'idle') {
+        this.phase = 'growing';
+        // ПРАВКА 2: Фіксуємо точку старту палки в момент натискання
+        this.stick.startX = this.heroX;
+        this.stick.growing = true;
+        if (!this.hintHidden) {
+          document.getElementById('hint').style.opacity = '0';
+          this.hintHidden = true;
+        }
+      }
+    };
+    const onUp = (e) => {
+      e.preventDefault();
+      if (this.phase === 'growing') {
+        this.stick.growing = false;
+        this.phase = 'falling';
+      }
+    };
+    canvas.addEventListener('touchstart', onDown, { passive: false });
+    canvas.addEventListener('touchend', onUp, { passive: false });
+    canvas.addEventListener('mousedown', onDown);
+    canvas.addEventListener('mouseup', onUp);
+    this._onDown = onDown;
+    this._onUp = onUp;
+  }
+
+  unbindInput() {
+    canvas.removeEventListener('touchstart', this._onDown);
+    canvas.removeEventListener('touchend', this._onUp);
+    canvas.removeEventListener('mousedown', this._onDown);
+    canvas.removeEventListener('mouseup', this._onUp);
+  }
+
+  start() {
+    this.lastTime = performance.now();
+    this.loop(this.lastTime);
+  }
+
+  loop(ts) {
+    const dt = Math.min((ts - this.lastTime) / 1000, 0.05);
+    this.lastTime = ts;
+    this.update(dt);
+    this.draw();
+    if (this.phase !== 'dead') {
+      this.raf = requestAnimationFrame((t) => this.loop(t));
+    }
+  }
+
+  update(dt) {
+    const GROW_SPEED = this.H * 0.55;
+
+    if (this.phase === 'growing') {
+      this.stick.length += GROW_SPEED * dt;
+    }
+
+    if (this.phase === 'falling') {
+      const ROTATE_SPEED = Math.PI * 1.6;
+      this.stickFallAngle += ROTATE_SPEED * dt;
+      if (this.stickFallAngle >= 0) {
+        this.stickFallAngle = 0;
+        this.phase = 'walking';
+        this.walkStart = this.heroX;
+        this.stickTipX = this.stick.startX + this.stick.length;
+        this.checkLanding();
+      }
+    }
+
+    if (this.phase === 'walking') {
+      const WALK_SPEED = this.W * 0.38;
+      const destination = this.walkDestination;
+      const dx = destination - this.heroX;
+      const step = WALK_SPEED * dt;
+      if (Math.abs(dx) <= step) {
+        this.heroX = destination;
+        this.onWalkEnd();
+      } else {
+        this.heroX += Math.sign(dx) * step;
+      }
+      this.walkOffset = Math.sin((this.heroX - this.walkStart) * 0.18) * 3;
+    }
+
+    if (this.phase === 'dying') {
+      const FALL_SPEED = this.H * 1.2;
+      this.fallY += FALL_SPEED * dt;
+      this.heroX += this.W * 0.15 * dt;
+      if (this.fallY > this.H * 0.4) {
+        this.phase = 'dead';
+        this.unbindInput();
+        this.showGameOver();
+      }
+      this.deathParticles.forEach(p => {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 600 * dt;
+        p.life -= dt;
+      });
+    }
+
+    const targetCam = this.heroX - this.W * 0.3;
+    this.cameraX += (targetCam - this.cameraX) * Math.min(dt * 8, 1);
+  }
+
+  checkLanding() {
+    const nextPlatform = this.platforms[1];
+    const tipX = this.stickTipX;
+    const pLeft = nextPlatform.x;
+    const pRight = nextPlatform.x + nextPlatform.w;
+
+    if (tipX >= pLeft && tipX <= pRight) {
+      this.walkDestination = tipX;
+      this.landSuccess = true;
+    } else {
+      this.walkDestination = tipX;
+      this.landSuccess = false;
+    }
+  }
+
+  onWalkEnd() {
+    if (this.landSuccess) {
+      const landedPlatform = this.platforms[1];
+      const tipX = this.stickTipX;
+      const standX = Math.min(tipX, landedPlatform.x + landedPlatform.w);
+      this.heroX = standX;
+      this.walkOffset = 0;
+
+      score++;
+      document.getElementById('scoreDisplay').textContent = score;
+      if (score > best) {
+        best = score;
+        document.getElementById('bestDisplay').textContent = best;
+      }
+
+      this.platforms.shift();
+      this.generateNextPlatform();
+      this.stick = { startX: 0, length: 0, angle: -Math.PI / 2, growing: false, fallen: false };
+      this.stickFallAngle = -Math.PI / 2;
+      this.phase = 'idle';
+    } else {
+      this.phase = 'dying';
+      this.fallY = 0;
+      this.spawnDeathParticles();
+    }
+  }
+
+  spawnDeathParticles() {
+    for (let i = 0; i < 12; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 180;
+      this.deathParticles.push({
+        x: this.heroX - this.cameraX,
+        y: this.heroY - this.walkOffset,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 100,
+        r: 3 + Math.random() * 5,
+        color: ['#ffd700','#ff8c00','#fff','#ff4444'][Math.floor(Math.random()*4)],
+        life: 0.6 + Math.random() * 0.4,
+        maxLife: 1,
+      });
+      this.deathParticles[this.deathParticles.length-1].maxLife = this.deathParticles[this.deathParticles.length-1].life;
+    }
+  }
+
+  draw() {
+    const W = this.W, H = this.H;
+    ctx.clearRect(0, 0, W, H);
+    drawBackground();
+
+    ctx.save();
+    ctx.translate(-this.cameraX, 0);
+
+    this.drawPlatforms();
+    this.drawStick();
+    this.drawHero();
+
+    ctx.restore();
+    this.drawParticles();
+  }
+
+  drawPlatforms() {
+    const H = this.H;
+    this.platforms.forEach((p, i) => {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.roundRect(p.x + 4, this.groundY - this.platformH + 4, p.w, this.platformH + H * 0.28 + 4, 4);
+      ctx.fill();
+
+      const grad = ctx.createLinearGradient(p.x, this.groundY - this.platformH, p.x, this.groundY + H * 0.28);
+      grad.addColorStop(0, i === 0 ? '#e8e8e8' : '#d0d0d0');
+      grad.addColorStop(0.06, i === 0 ? '#c0c0c0' : '#b0b0b0');
+      grad.addColorStop(1, '#404060');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(p.x, this.groundY - this.platformH, p.w, this.platformH + H * 0.28, [4, 4, 0, 0]);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(p.x + 2, this.groundY - this.platformH, p.w - 4, 3);
+
+      const cx = p.x + p.w / 2;
+      ctx.strokeStyle = 'rgba(255,220,0,0.2)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(cx, this.groundY - this.platformH);
+      ctx.lineTo(cx, this.groundY - this.platformH + 8);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+
+  drawStick() {
+    if (this.stick.length === 0) return;
+    // ПРАВКА 3: Малюємо від зафіксованого startX, а не від heroX
+    const x = this.stick.startX;
+    const y = this.groundY - this.platformH;
+
+    let angle = this.stickFallAngle;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(2, 2);
+    ctx.lineTo(this.stick.length + 2, 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(this.stick.length, 0);
+    ctx.stroke();
+
+    if (this.phase === 'growing') {
+      ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(this.stick.length, 0);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  drawHero() {
+    const x = this.heroX;
+    const size = this.heroSize;
+    const baseY = this.groundY - this.platformH;
+    let drawY = baseY - size;
+
+    if (this.phase === 'dying') {
+      drawY += this.fallY;
+    } else {
+      drawY += this.walkOffset;
+    }
+
+    let rot = 0;
+    if (this.phase === 'dying') {
+      rot = (this.fallY / (this.H * 0.4)) * Math.PI;
+    }
+
+    ctx.save();
+    ctx.translate(x, drawY + size / 2);
+    ctx.rotate(rot);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, size / 2 + 2, size * 0.4, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (heroImg && heroImg.complete && heroImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(heroImg, -size / 2, -size / 2, size, size);
+      ctx.restore();
+
+      ctx.strokeStyle = this.phase === 'dying' ? '#ff4444' : '#ffd700';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = this.phase === 'dying' ? '#ff4444' : '#ffd700';
+      ctx.beginPath();
+      ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = `${size * 0.55}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(selectedHero ? selectedHero.emoji : '🦸', 0, 2);
+    }
+
+    ctx.restore();
+  }
+
+  drawParticles() {
+    this.deathParticles.forEach(p => {
+      if (p.life <= 0) return;
+      const alpha = p.life / p.maxLife;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  showGameOver() {
+    document.getElementById('goScore').textContent = `Очки: ${score}`;
+    document.getElementById('goBest').textContent = `🏆 Рекорд: ${best}`;
+    const el = document.getElementById('gameOverScreen');
+    el.style.display = 'flex';
+  }
+}
+
+function restartGame() {
+  if (game) {
+    cancelAnimationFrame(game.raf);
+    game.unbindInput();
+    game = null;
+  }
+  document.getElementById('gameOverScreen').style.display = 'none';
+  document.getElementById('hint').style.opacity = '1';
+  initGame();
+}
+
+document.getElementById('restartBtn').addEventListener('click', restartGame);
+document.getElementById('goRestartBtn').addEventListener('click', restartGame);
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+</script>
+</body>
+</html>
