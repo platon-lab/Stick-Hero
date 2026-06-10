@@ -53,6 +53,9 @@
     gap: 14px;
     max-width: 360px;
     width: 100%;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 4px;
   }
   .hero-card {
     background: rgba(255,255,255,0.05);
@@ -244,6 +247,22 @@ const HEROES = [
   { name: 'Fil',     file: 'Fil.png',     emoji: '🐘' },
   { name: 'Milka',   file: 'Milka.png',   emoji: '🐄' },
   { name: 'Bark',    file: 'Bark.png',    emoji: '🐶' },
+  { name: 'Persik',  file: 'Persik.png',  emoji: '🍑' },
+  { name: 'Spike',   file: 'Spike.png',   emoji: '🌵' },
+  { name: 'Alyonka', file: 'Alyonka.png', emoji: '👧' },
+  { name: 'Lilu',    file: 'Lilu.png',    emoji: '🦊' },
+  { name: 'Manya',   file: 'Manya.png',   emoji: '🐱' },
+  { name: 'Liza',    file: 'Liza.png',    emoji: '🦄' },
+  { name: 'Grivna',  file: 'Grivna.png',  emoji: '🪙' },
+  { name: 'Ben',     file: 'Ben.png',     emoji: '🐕' },
+  { name: 'Goldi',   file: 'Goldi.png',   emoji: '🐠' },
+  { name: 'Raf',     file: 'Raf.png',     emoji: '☕' },
+  { name: 'Veles',   file: 'Veles.png',   emoji: '🐺' },
+  { name: 'Masha',   file: 'Masha.png',   emoji: '👱‍♀️' },
+  { name: 'Brilliantik', file: 'Brilliantik.png', emoji: '💎' },
+  { name: 'Richik',  file: 'Richik.png',  emoji: '🦁' },
+  { name: 'Shunya',  file: 'Shunya.png',  emoji: '🐭' },
+  { name: 'Baks',    file: 'Baks.png',    emoji: '💵' }
 ];
 
 let selectedHero = null;
@@ -363,7 +382,6 @@ class Game {
     this.heroSize = Math.min(this.W, this.H) * 0.1;
 
     this.platforms = [];
-    // ПРАВКА 1: Додано startX
     this.stick = { startX: 0, length: 0, angle: -Math.PI / 2, growing: false, fallen: false };
     this.heroX = 0;
     this.heroY = 0;
@@ -421,7 +439,6 @@ class Game {
       e.preventDefault();
       if (this.phase === 'idle') {
         this.phase = 'growing';
-        // ПРАВКА 2: Фіксуємо точку старту палки в момент натискання
         this.stick.startX = this.heroX;
         this.stick.growing = true;
         if (!this.hintHidden) {
@@ -631,7 +648,6 @@ class Game {
 
   drawStick() {
     if (this.stick.length === 0) return;
-    // ПРАВКА 3: Малюємо від зафіксованого startX, а не від heroX
     const x = this.stick.startX;
     const y = this.groundY - this.platformH;
 
